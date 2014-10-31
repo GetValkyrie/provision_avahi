@@ -75,7 +75,7 @@ class AvahiAliases:
         self.server.connect_to_signal( "StateChanged", self.server_state_changed )
 
     def main(self):
-        signal.signal(signal.SIGTERM, self.handle_signal)
+        signal.signal(signal.SIGTERM, self.handle_interrupt)
         signal.signal(signal.SIGHUP, self.handle_reload)
 
         # prime it
@@ -89,10 +89,12 @@ class AvahiAliases:
         if not self.group is None:
             self.group.Free()
 
-    def handle_signal(self, sig, no):
+    def handle_interrupt(self, sig, no):
+        """any signal thrown here will raise an exception"""
         raise KeyboardInterrupt
 
     def handle_reload(self, sig, no):
+        """handler for SIGHUP: stop and start everything"""
         self.remove_service()
         self.add_service()
 
@@ -113,26 +115,32 @@ class AvahiAliases:
         return ''.join( '%s%s' % enc(p) for p in name.split('.') if p ) + '\0'
 
     def add_service(self):
+        """core functionality is here: announce the aliases to Avahi through DBUS"""
+
+        """create an EntryGroup to send our records"""
         if self.group is None:
             self.group = dbus.Interface(
                     dbus.SystemBus().get_object( avahi.DBUS_NAME, self.server.EntryGroupNew()),
                     avahi.DBUS_INTERFACE_ENTRY_GROUP)
             self.group.connect_to_signal('StateChanged', self.entry_group_state_changed)
 
+        # count successful records
         records = 0
         for cname in Settings.get_aliases():
             logging.info("Adding service '%s' of type '%s' ..." % (cname, 'CNAME'))
+            # format the data for consumption by avahi
             cname = self.encode(cname)
             rdata = self.encode_rdata(self.server.GetHostNameFqdn())
             rdata = avahi.string_to_byte_array(rdata)
 
+            # add a CNAME record pointing to the local FQDN for every alias provided
             try:
                 self.group.AddRecord(avahi.IF_UNSPEC, avahi.PROTO_UNSPEC, dbus.UInt32(0),
                                      cname, Settings.CLASS_IN, Settings.TYPE_CNAME,
                                      Settings.TTL, rdata)
             except dbus.exceptions.DBusException as e:
                 if 'org.freedesktop.Avahi.NotSupportedError' in str(e):
-                    logging.warning("cname %s not supported by avahi" % cname)
+                    logging.warning("cname %s not supported by avahi, try appending .local" % cname)
                 else:
                     raise
             else:
@@ -142,10 +150,16 @@ class AvahiAliases:
             self.group.Commit()
 
     def remove_service(self):
+        """remove the announced records from avahi"""
         if not self.group is None:
             self.group.Reset()
 
     def server_state_changed(self, state):
+        """handle server state changes
+
+        this is how we get told to add or remove records most of the
+        time.
+        """
         logging.debug("server state change: %s" % state)
         if state == avahi.SERVER_COLLISION:
             logging.warning("WARNING: Server name collision")
@@ -154,8 +168,10 @@ class AvahiAliases:
             self.add_service()
 
     def entry_group_state_changed(self, state, error):
+        """watch the group we have created to deal with conflicts"""
         logging.debug("state change: %i" % state)
 
+        # it was setup properly, log it
         if state == avahi.ENTRY_GROUP_ESTABLISHED:
             logging.info("Service established.")
         elif state == avahi.ENTRY_GROUP_COLLISION:
