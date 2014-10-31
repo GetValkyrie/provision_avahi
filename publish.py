@@ -169,8 +169,8 @@ def handle_signal(sig, no):
     raise KeyboardInterrupt
 
 def handle_reload(sig, no):
-    process.group.Reset()
-    process.server_state_changed( server.GetState() )
+    process.remove_service()
+    process.add_service()
 
 if __name__ == '__main__':
     parse_args()
@@ -187,6 +187,7 @@ if __name__ == '__main__':
     process = AvahiAliases(server)
 
     server.connect_to_signal( "StateChanged", process.server_state_changed )
+    # prime it
     process.server_state_changed( server.GetState() )
 
     signal.signal(signal.SIGTERM, handle_signal)
