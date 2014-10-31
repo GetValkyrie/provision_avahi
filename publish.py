@@ -8,8 +8,6 @@ import avahi
 from encodings.idna import ToASCII
 from dbus.mainloop.glib import DBusGMainLoop
 
-aliases = [ u'foo.local', u'bar.local', u'quux.local' ]
-
 domain = "" # Domain to publish on, default to .local
 host = "" # Host to publish records for, default to localhost
 
@@ -24,7 +22,7 @@ class Settings:
 
     ALIASES_CONFIG = "/etc/avahi/aliases"
     ALIAS_CONF_PATH = "/etc/avahi/aliases.d"
-    #ALIAS_DEFINITIONS =[ os.path.join(ALIAS_CONF_PATH, config_file) for config_file in os.listdir(ALIAS_CONF_PATH) ]
+    ALIAS_DEFINITIONS =[ os.path.join(ALIAS_CONF_PATH, config_file) for config_file in os.listdir(ALIAS_CONF_PATH) ] + [ ALIASES_CONFIG ]
 
 class AvahiAliases:
     def __init__(self, *args, **kwargs):
@@ -42,13 +40,15 @@ class AvahiAliases:
         """ Steps through all config alias files and builds a set of aliases """
         aliases = set()
         for config_file_path in path :
-            config_file = open(config_file_path, 'r')
-            for line in config_file :
-                entry = line.strip('\n')
-                if len(entry) > 0 and not entry.startswith("#"):
-                    aliases.add(entry)
-            config_file.close()
-
+            try:
+                config_file = open(config_file_path, 'r')
+                for line in config_file :
+                    entry = line.strip('\n')
+                    if len(entry) > 0 and not entry.startswith("#"):
+                        aliases.add(entry)
+                config_file.close()
+            except IOError:
+                pass
         return aliases
 
     def encode(self, name):
@@ -75,16 +75,21 @@ class AvahiAliases:
                     avahi.DBUS_INTERFACE_ENTRY_GROUP)
             group.connect_to_signal('StateChanged', self.entry_group_state_changed)
 
-        for cname in aliases:
+        for cname in self.get_aliases(Settings.ALIAS_DEFINITIONS):
             print "Adding service '%s' of type '%s' ..." % (cname, 'CNAME')
             cname = self.encode(cname)
             rdata = self.encode_rdata(server.GetHostNameFqdn())
             rdata = avahi.string_to_byte_array(rdata)
 
-            group.AddRecord(avahi.IF_UNSPEC, avahi.PROTO_UNSPEC, dbus.UInt32(0),
-                cname, Settings.CLASS_IN, Settings.TYPE_CNAME, Settings.TTL, rdata)
-
-        group.Commit()
+            try:
+                group.AddRecord(avahi.IF_UNSPEC, avahi.PROTO_UNSPEC, dbus.UInt32(0),
+                                cname, Settings.CLASS_IN, Settings.TYPE_CNAME,
+                                Settings.TTL, rdata)
+            except dbus.exceptions.DBusException as e:
+                if 'org.freedesktop.Avahi.NotSupportedError' in str(e):
+                    print "cname %s not supported by avahi" % cname
+            else:
+                group.Commit()
 
     def remove_service(self):
         global group
