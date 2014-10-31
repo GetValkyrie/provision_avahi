@@ -162,6 +162,7 @@ def parse_args():
         logging.basicConfig(level=logging.INFO)
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
+    # TODO: log to syslog as well?
 
 def handle_signal(sig, no):
     raise KeyboardInterrupt
