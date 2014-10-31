@@ -21,9 +21,7 @@ Requires:
  * python-avahi
  * python-dbus
 
-Author:
-
- * Antoine Beaupré <anarcat@koumbit.org>
+Author: Antoine Beaupré <anarcat@koumbit.org>
 """
 
 import os
@@ -101,8 +99,8 @@ class AvahiAliases:
 
             try:
                 self.group.AddRecord(avahi.IF_UNSPEC, avahi.PROTO_UNSPEC, dbus.UInt32(0),
-                                cname, Settings.CLASS_IN, Settings.TYPE_CNAME,
-                                Settings.TTL, rdata)
+                                     cname, Settings.CLASS_IN, Settings.TYPE_CNAME,
+                                     Settings.TTL, rdata)
             except dbus.exceptions.DBusException as e:
                 if 'org.freedesktop.Avahi.NotSupportedError' in str(e):
                     logging.warning("cname %s not supported by avahi" % cname)
@@ -152,7 +150,7 @@ class AvahiAliases:
             return
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-d', '--directory', action='store', help='another directory to parse aliases from')
     parser.add_argument('-v', '--verbose', dest='verbose', default=False, action='store_true',
                         help='explain what we do along the way')
