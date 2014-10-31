@@ -9,10 +9,6 @@ import avahi
 from encodings.idna import ToASCII
 from dbus.mainloop.glib import DBusGMainLoop
 
-domain = "" # Domain to publish on, default to .local
-host = "" # Host to publish records for, default to localhost
-
-group = None #our entry group
 rename_count = 12 # Counter so we only rename after collisions a sensible number of times
 
 class Settings:
@@ -27,7 +23,7 @@ class Settings:
 
 class AvahiAliases:
     def __init__(self, *args, **kwargs):
-
+        self.group = None #our entry group
         # setup logging
         pass
         #self.logger = logging.getLogger(os.path.basename(__file__))
@@ -69,12 +65,11 @@ class AvahiAliases:
         return ''.join( '%s%s' % enc(p) for p in name.split('.') if p ) + '\0'
 
     def add_service(self):
-        global group, serviceName, serviceType, servicePort, serviceTXT, domain, host
-        if group is None:
-            group = dbus.Interface(
+        if self.group is None:
+            self.group = dbus.Interface(
                     bus.get_object( avahi.DBUS_NAME, server.EntryGroupNew()),
                     avahi.DBUS_INTERFACE_ENTRY_GROUP)
-            group.connect_to_signal('StateChanged', self.entry_group_state_changed)
+            self.group.connect_to_signal('StateChanged', self.entry_group_state_changed)
 
         for cname in self.get_aliases(Settings.ALIAS_DEFINITIONS):
             print "Adding service '%s' of type '%s' ..." % (cname, 'CNAME')
@@ -84,7 +79,7 @@ class AvahiAliases:
             records = 0
 
             try:
-                group.AddRecord(avahi.IF_UNSPEC, avahi.PROTO_UNSPEC, dbus.UInt32(0),
+                self.group.AddRecord(avahi.IF_UNSPEC, avahi.PROTO_UNSPEC, dbus.UInt32(0),
                                 cname, Settings.CLASS_IN, Settings.TYPE_CNAME,
                                 Settings.TTL, rdata)
             except dbus.exceptions.DBusException as e:
@@ -96,13 +91,11 @@ class AvahiAliases:
                 records += 1
         if records > 0:
             print "committing"
-            group.Commit()
+            self.group.Commit()
 
     def remove_service(self):
-        global group
-
-        if not group is None:
-            group.Reset()
+        if not self.group is None:
+            self.group.Reset()
 
     def server_state_changed(self, state):
         print "server state change: %s" % state
@@ -165,5 +158,5 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
 
-    if not group is None:
-        group.Free()
+    if not process.group is None:
+        process.group.Free()
