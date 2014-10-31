@@ -36,8 +36,6 @@ import avahi
 from encodings.idna import ToASCII
 from dbus.mainloop.glib import DBusGMainLoop
 
-rename_count = 12 # Counter so we only rename after collisions a sensible number of times
-
 class Settings:
     # Got these from /usr/include/avahi-common/defs.h
     TTL = 60
@@ -48,9 +46,13 @@ class Settings:
     ALIAS_CONF_PATH = "/etc/avahi/aliases.d"
     ALIAS_DEFINITIONS =[ os.path.join(ALIAS_CONF_PATH, config_file) for config_file in os.listdir(ALIAS_CONF_PATH) ] + [ ALIASES_CONFIG ]
 
+    # Counter so we only rename after collisions a sensible number of times
+    RENAME_COUNT = 12
+
 class AvahiAliases:
     def __init__(self, *args, **kwargs):
         self.group = None #our entry group
+        self.rename_count = Settings.RENAME_COUNT
 
     def get_aliases(self, path=None):
         """ Steps through all config alias files and builds a set of aliases """
@@ -125,23 +127,24 @@ class AvahiAliases:
             self.add_service()
 
     def entry_group_state_changed(self, state, error):
-        global server, rename_count
+        global server
 
         logging.debug("state change: %i" % state)
 
         if state == avahi.ENTRY_GROUP_ESTABLISHED:
             logging.info("Service established.")
         elif state == avahi.ENTRY_GROUP_COLLISION:
-
-            rename_count = rename_count - 1
-            if rename_count > 0:
-                name = server.GetAlternativeServiceName(name)
-                logging.warning("WARNING: Service name collision, changing name to '%s' ..." % name)
+            self.rename_count = self.rename_count - 1
+            if self.rename_count > 0:
+                # XXX: it is likely this code doesn't work
+                # see also http://lists.freedesktop.org/archives/avahi/2011-August/002078.html
+                logging.warning("WARNING: Service name collision, changing name to '%s' ..." % 
+                                server.GetAlternativeServiceName(name))
                 self.remove_service()
                 self.add_service()
-
             else:
-                logging.error("ERROR: No suitable service name found after %i retries, exiting." % n_rename)
+                logging.error("ERROR: No suitable service name found after %i retries, exiting." %
+                              Settings.RENAME_COUNT)
                 main_loop.quit()
         elif state == avahi.ENTRY_GROUP_FAILURE:
             logging.error("Error in group state changed", error)
