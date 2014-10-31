@@ -51,6 +51,34 @@ class AvahiAliases:
     def __init__(self, *args, **kwargs):
         self.group = None #our entry group
         self.rename_count = Settings.RENAME_COUNT
+        DBusGMainLoop( set_as_default=True )
+
+        self.server = dbus.Interface(
+            dbus.SystemBus().get_object( avahi.DBUS_NAME, avahi.DBUS_PATH_SERVER ),
+            avahi.DBUS_INTERFACE_SERVER )
+        self.server.connect_to_signal( "StateChanged", self.server_state_changed )
+
+    def main(self):
+        signal.signal(signal.SIGTERM, self.handle_signal)
+        signal.signal(signal.SIGHUP, self.handle_reload)
+
+        # prime it
+        self.server_state_changed( self.server.GetState() )
+
+        try:
+            gobject.MainLoop().run()
+        except KeyboardInterrupt:
+            pass
+
+        if not self.group is None:
+            self.group.Free()
+
+    def handle_signal(self, sig, no):
+        raise KeyboardInterrupt
+
+    def handle_reload(self, sig, no):
+        self.remove_service()
+        self.add_service()
 
     def get_aliases(self, path=None):
         """ Steps through all config alias files and builds a set of aliases """
@@ -86,7 +114,7 @@ class AvahiAliases:
     def add_service(self):
         if self.group is None:
             self.group = dbus.Interface(
-                    bus.get_object( avahi.DBUS_NAME, server.EntryGroupNew()),
+                    dbus.SystemBus().get_object( avahi.DBUS_NAME, self.server.EntryGroupNew()),
                     avahi.DBUS_INTERFACE_ENTRY_GROUP)
             self.group.connect_to_signal('StateChanged', self.entry_group_state_changed)
 
@@ -94,7 +122,7 @@ class AvahiAliases:
         for cname in self.get_aliases(Settings.ALIAS_DEFINITIONS):
             logging.info("Adding service '%s' of type '%s' ..." % (cname, 'CNAME'))
             cname = self.encode(cname)
-            rdata = self.encode_rdata(server.GetHostNameFqdn())
+            rdata = self.encode_rdata(self.server.GetHostNameFqdn())
             rdata = avahi.string_to_byte_array(rdata)
 
             try:
@@ -125,8 +153,6 @@ class AvahiAliases:
             self.add_service()
 
     def entry_group_state_changed(self, state, error):
-        global server
-
         logging.debug("state change: %i" % state)
 
         if state == avahi.ENTRY_GROUP_ESTABLISHED:
@@ -137,7 +163,7 @@ class AvahiAliases:
                 # XXX: it is likely this code doesn't work
                 # see also http://lists.freedesktop.org/archives/avahi/2011-August/002078.html
                 logging.warning("WARNING: Service name collision, changing name to '%s' ..." % 
-                                server.GetAlternativeServiceName(name))
+                                self.server.GetAlternativeServiceName(name))
                 self.remove_service()
                 self.add_service()
             else:
@@ -165,38 +191,7 @@ def parse_args():
         logging.basicConfig(level=logging.DEBUG)
     # TODO: log to syslog as well?
 
-def handle_signal(sig, no):
-    raise KeyboardInterrupt
-
-def handle_reload(sig, no):
-    process.remove_service()
-    process.add_service()
-
 if __name__ == '__main__':
     parse_args()
 
-    DBusGMainLoop( set_as_default=True )
-
-    main_loop = gobject.MainLoop()
-    bus = dbus.SystemBus()
-
-    server = dbus.Interface(
-            bus.get_object( avahi.DBUS_NAME, avahi.DBUS_PATH_SERVER ),
-            avahi.DBUS_INTERFACE_SERVER )
-
-    process = AvahiAliases(server)
-
-    server.connect_to_signal( "StateChanged", process.server_state_changed )
-    # prime it
-    process.server_state_changed( server.GetState() )
-
-    signal.signal(signal.SIGTERM, handle_signal)
-    signal.signal(signal.SIGHUP, handle_reload)
-    
-    try:
-        main_loop.run()
-    except KeyboardInterrupt:
-        pass
-
-    if not process.group is None:
-        process.group.Free()
+    AvahiAliases().main()
