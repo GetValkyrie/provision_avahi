@@ -1,4 +1,30 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+"""
+Publish Avahi MDNS CNAME records for the local server.
+
+This daemon will scan a set of configuration files
+(/etc/avahi/aliases, any file in/etc/avahi/aliases.d and whatever
+files in the --directory argument) and attempt to tell Avahi to
+announce the names listed in those files (one per line) as CNAME
+records to the local server.
+
+Inspired by:
+
+ * http://www.avahi.org/wiki/PythonPublishExample
+ * https://github.com/PraxisLabs/avahi-aliases
+
+Requires:
+
+ * python-gobject
+ * python-avahi
+ * python-dbus
+
+Author:
+
+ * Antoine Beaupré <anarcat@koumbit.org>
+"""
 
 import os
 import signal
