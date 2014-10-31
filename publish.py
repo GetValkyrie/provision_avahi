@@ -47,6 +47,22 @@ class Settings:
     # Counter so we only rename after collisions a sensible number of times
     RENAME_COUNT = 12
 
+    @classmethod
+    def get_aliases(cls):
+        """ Steps through all config alias files and builds a set of aliases """
+        aliases = set()
+        for config_file_path in cls.ALIAS_DEFINITIONS:
+            try:
+                config_file = open(config_file_path, 'r')
+                for line in config_file :
+                    entry = line.strip('\n')
+                    if len(entry) > 0 and not entry.startswith("#"):
+                        aliases.add(entry)
+                config_file.close()
+            except IOError:
+                pass
+        return aliases
+
 class AvahiAliases:
     def __init__(self, *args, **kwargs):
         self.group = None #our entry group
@@ -80,21 +96,6 @@ class AvahiAliases:
         self.remove_service()
         self.add_service()
 
-    def get_aliases(self, path=None):
-        """ Steps through all config alias files and builds a set of aliases """
-        aliases = set()
-        for config_file_path in path :
-            try:
-                config_file = open(config_file_path, 'r')
-                for line in config_file :
-                    entry = line.strip('\n')
-                    if len(entry) > 0 and not entry.startswith("#"):
-                        aliases.add(entry)
-                config_file.close()
-            except IOError:
-                pass
-        return aliases
-
     def encode(self, name):
         """ convert the string to ascii
             copied from https://gist.github.com/gdamjan/3168336
@@ -119,7 +120,7 @@ class AvahiAliases:
             self.group.connect_to_signal('StateChanged', self.entry_group_state_changed)
 
         records = 0
-        for cname in self.get_aliases(Settings.ALIAS_DEFINITIONS):
+        for cname in Settings.get_aliases():
             logging.info("Adding service '%s' of type '%s' ..." % (cname, 'CNAME'))
             cname = self.encode(cname)
             rdata = self.encode_rdata(self.server.GetHostNameFqdn())
