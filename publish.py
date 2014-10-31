@@ -150,7 +150,7 @@ class AvahiAliases:
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument('--directory', action='store', help='another directory to parse aliases from')
+    parser.add_argument('-d', '--directory', action='store', help='another directory to parse aliases from')
     parser.add_argument('-v', '--verbose', dest='verbose', default=False, action='store_true',
                         help='explain what we do along the way')
     parser.add_argument('--debug', dest='debug', default=False, action='store_true',
