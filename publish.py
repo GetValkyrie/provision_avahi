@@ -90,12 +90,12 @@ class AvahiAliases:
                     avahi.DBUS_INTERFACE_ENTRY_GROUP)
             self.group.connect_to_signal('StateChanged', self.entry_group_state_changed)
 
+        records = 0
         for cname in self.get_aliases(Settings.ALIAS_DEFINITIONS):
             logging.info("Adding service '%s' of type '%s' ..." % (cname, 'CNAME'))
             cname = self.encode(cname)
             rdata = self.encode_rdata(server.GetHostNameFqdn())
             rdata = avahi.string_to_byte_array(rdata)
-            records = 0
 
             try:
                 self.group.AddRecord(avahi.IF_UNSPEC, avahi.PROTO_UNSPEC, dbus.UInt32(0),
