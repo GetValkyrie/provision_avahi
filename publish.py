@@ -67,24 +67,6 @@ class AvahiAliases:
             return chr(len(a)), a
         return ''.join( '%s%s' % enc(p) for p in name.split('.') if p ) + '\0'
 
-    def run(self, *args, **kwargs):
-        """ runner for python-daemon """
-        self.aliases = self.get_aliases(Settings.ALIAS_DEFINITIONS)
-        #self.logger.info("Announcing aliases [{}]".format(" ".join(self.aliases)))
-
-        for cname in self.aliases:
-            cname = unicode(cname, locale.getpreferredencoding())
-            print "Announcing", cname
-            self.publish(cname)
-
-        print "Announced all aliases"
-
-        while True:
-            time.sleep(Settings.TTL)
-        self.logger.info("Stopping")
-        sys.exit(0)
-
-
     def add_service(self):
         global group, serviceName, serviceType, servicePort, serviceTXT, domain, host
         if group is None:
@@ -151,7 +133,7 @@ if __name__ == '__main__':
             bus.get_object( avahi.DBUS_NAME, avahi.DBUS_PATH_SERVER ),
             avahi.DBUS_INTERFACE_SERVER )
 
-    process = AvahiAliases()
+    process = AvahiAliases(server)
 
     server.connect_to_signal( "StateChanged", process.server_state_changed )
     process.server_state_changed( server.GetState() )
