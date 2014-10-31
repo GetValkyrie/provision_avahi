@@ -125,7 +125,7 @@ class AvahiAliases:
             self.add_service()
 
     def entry_group_state_changed(self, state, error):
-        global serviceName, server, rename_count
+        global server, rename_count
 
         logging.debug("state change: %i" % state)
 
