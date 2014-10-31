@@ -2,6 +2,7 @@
 
 import os
 import logging
+import argparse
 import dbus
 import gobject
 import avahi
@@ -98,6 +99,7 @@ class AvahiAliases:
             group.Reset()
 
     def server_state_changed(self, state):
+        print "server state change: %s" % state
         if state == avahi.SERVER_COLLISION:
             print "WARNING: Server name collision"
             self.remove_service()
@@ -128,7 +130,16 @@ class AvahiAliases:
             main_loop.quit()
             return
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('--directory', action='store', help='another directory to parse aliases from')
+    args = parser.parse_args()
+    if args.directory:
+        Settings.ALIAS_DEFINITIONS += [ os.path.join(args.directory, config_file) for config_file in os.listdir(args.directory) ]
+
 if __name__ == '__main__':
+    parse_args()
+
     DBusGMainLoop( set_as_default=True )
 
     main_loop = gobject.MainLoop()
@@ -142,7 +153,6 @@ if __name__ == '__main__':
 
     server.connect_to_signal( "StateChanged", process.server_state_changed )
     process.server_state_changed( server.GetState() )
-
 
     try:
         main_loop.run()
