@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import os
+import signal
 import logging
 import argparse
 import dbus
@@ -136,6 +137,13 @@ def parse_args():
     if args.directory:
         Settings.ALIAS_DEFINITIONS += [ os.path.join(args.directory, config_file) for config_file in os.listdir(args.directory) ]
 
+def handle_signal(sig, no):
+    raise KeyboardInterrupt
+
+def handle_reload(sig, no):
+    process.group.Reset()
+    process.server_state_changed( server.GetState() )
+
 if __name__ == '__main__':
     parse_args()
 
@@ -153,6 +161,9 @@ if __name__ == '__main__':
     server.connect_to_signal( "StateChanged", process.server_state_changed )
     process.server_state_changed( server.GetState() )
 
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGHUP, handle_reload)
+    
     try:
         main_loop.run()
     except KeyboardInterrupt:
