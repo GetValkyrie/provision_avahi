@@ -51,14 +51,6 @@ class Settings:
 class AvahiAliases:
     def __init__(self, *args, **kwargs):
         self.group = None #our entry group
-        # setup logging
-        pass
-        #self.logger = logging.getLogger(os.path.basename(__file__))
-        #self.logger.setLevel(logging.DEBUG)
-        # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        # self.logger.setFormatter(formatter)
-        #handler = logging.handlers.SysLogHandler(address = '/dev/log')
-        #self.logger.addHandler(handler)
 
     def get_aliases(self, path=None):
         """ Steps through all config alias files and builds a set of aliases """
@@ -99,7 +91,7 @@ class AvahiAliases:
             self.group.connect_to_signal('StateChanged', self.entry_group_state_changed)
 
         for cname in self.get_aliases(Settings.ALIAS_DEFINITIONS):
-            print "Adding service '%s' of type '%s' ..." % (cname, 'CNAME')
+            logging.info("Adding service '%s' of type '%s' ..." % (cname, 'CNAME'))
             cname = self.encode(cname)
             rdata = self.encode_rdata(server.GetHostNameFqdn())
             rdata = avahi.string_to_byte_array(rdata)
@@ -111,13 +103,13 @@ class AvahiAliases:
                                 Settings.TTL, rdata)
             except dbus.exceptions.DBusException as e:
                 if 'org.freedesktop.Avahi.NotSupportedError' in str(e):
-                    print "cname %s not supported by avahi" % cname
+                    logging.warning("cname %s not supported by avahi" % cname)
                 else:
                     raise
             else:
                 records += 1
         if records > 0:
-            print "committing"
+            logging.debug("committing")
             self.group.Commit()
 
     def remove_service(self):
@@ -125,9 +117,9 @@ class AvahiAliases:
             self.group.Reset()
 
     def server_state_changed(self, state):
-        print "server state change: %s" % state
+        logging.debug("server state change: %s" % state)
         if state == avahi.SERVER_COLLISION:
-            print "WARNING: Server name collision"
+            logging.warning("WARNING: Server name collision")
             self.remove_service()
         elif state == avahi.SERVER_RUNNING:
             self.add_service()
@@ -135,33 +127,41 @@ class AvahiAliases:
     def entry_group_state_changed(self, state, error):
         global serviceName, server, rename_count
 
-        print "state change: %i" % state
+        logging.debug("state change: %i" % state)
 
         if state == avahi.ENTRY_GROUP_ESTABLISHED:
-            print "Service established."
+            logging.info("Service established.")
         elif state == avahi.ENTRY_GROUP_COLLISION:
 
             rename_count = rename_count - 1
             if rename_count > 0:
                 name = server.GetAlternativeServiceName(name)
-                print "WARNING: Service name collision, changing name to '%s' ..." % name
+                logging.warning("WARNING: Service name collision, changing name to '%s' ..." % name)
                 self.remove_service()
                 self.add_service()
 
             else:
-                print "ERROR: No suitable service name found after %i retries, exiting." % n_rename
+                logging.error("ERROR: No suitable service name found after %i retries, exiting." % n_rename)
                 main_loop.quit()
         elif state == avahi.ENTRY_GROUP_FAILURE:
-            print "Error in group state changed", error
+            logging.error("Error in group state changed", error)
             main_loop.quit()
             return
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('--directory', action='store', help='another directory to parse aliases from')
+    parser.add_argument('-v', '--verbose', dest='verbose', default=False, action='store_true',
+                        help='explain what we do along the way')
+    parser.add_argument('--debug', dest='debug', default=False, action='store_true',
+                        help='more verbosity')
     args = parser.parse_args()
     if args.directory:
         Settings.ALIAS_DEFINITIONS += [ os.path.join(args.directory, config_file) for config_file in os.listdir(args.directory) ]
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO)
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
 
 def handle_signal(sig, no):
     raise KeyboardInterrupt
