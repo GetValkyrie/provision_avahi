@@ -74,7 +74,8 @@ class AvahiAliases:
             avahi.DBUS_INTERFACE_SERVER )
         self.server.connect_to_signal( "StateChanged", self.server_state_changed )
 
-    def main(self):
+    def run(self):
+        """main loop of this program is here"""
         signal.signal(signal.SIGTERM, self.handle_interrupt)
         signal.signal(signal.SIGHUP, self.handle_reload)
 
@@ -211,4 +212,4 @@ def parse_args():
 if __name__ == '__main__':
     parse_args()
 
-    AvahiAliases().main()
+    AvahiAliases().run()
