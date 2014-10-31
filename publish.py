@@ -81,6 +81,7 @@ class AvahiAliases:
             cname = self.encode(cname)
             rdata = self.encode_rdata(server.GetHostNameFqdn())
             rdata = avahi.string_to_byte_array(rdata)
+            records = 0
 
             try:
                 group.AddRecord(avahi.IF_UNSPEC, avahi.PROTO_UNSPEC, dbus.UInt32(0),
@@ -89,8 +90,13 @@ class AvahiAliases:
             except dbus.exceptions.DBusException as e:
                 if 'org.freedesktop.Avahi.NotSupportedError' in str(e):
                     print "cname %s not supported by avahi" % cname
+                else:
+                    raise
             else:
-                group.Commit()
+                records += 1
+        if records > 0:
+            print "committing"
+            group.Commit()
 
     def remove_service(self):
         global group
