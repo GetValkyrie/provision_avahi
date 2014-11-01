@@ -27,6 +27,7 @@ Author: Antoine Beaupré <anarcat@koumbit.org>
 import os
 import signal
 import logging
+import logging.handlers
 import argparse
 import dbus
 import gobject
@@ -203,13 +204,25 @@ def parse_args():
     args = parser.parse_args()
     if args.directory:
         Settings.ALIAS_DEFINITIONS += [ os.path.join(args.directory, config_file) for config_file in os.listdir(args.directory) ]
-    if args.verbose:
-        logging.basicConfig(level=logging.INFO)
+    return args
+
+def logging_setup(args):
+    slfmt = logging.Formatter('%(filename)s[%(process)d] %(message)s')
+    sl = logging.handlers.SysLogHandler(address='/dev/log')
+    sl.setFormatter(slfmt)
+    logging.getLogger('').addHandler(sl)
+    # log everything and let syslog sort it out
+    logging.getLogger('').setLevel(logging.DEBUG)
+    sh = logging.StreamHandler()
     if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
-    # TODO: log to syslog as well?
+        sh.setLevel(logging.DEBUG)
+    elif args.verbose:
+        sh.setLevel(logging.INFO)
+    else:
+        sh.setLevel(logging.WARNING)
+    logging.getLogger('').addHandler(sh)
 
 if __name__ == '__main__':
-    parse_args()
+    logging_setup(parse_args())
 
     AvahiAliases().run()
