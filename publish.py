@@ -206,8 +206,16 @@ def parse_args():
         Settings.ALIAS_DEFINITIONS += [ os.path.join(args.directory, config_file) for config_file in os.listdir(args.directory) ]
     return args
 
-def logging_setup(args):
-    slfmt = logging.Formatter('%(filename)s[%(process)d] %(message)s')
+def daemon_logging(args):
+    """setup standard daemon logging
+
+    that is: by default, everything above info goes on stderr, and
+    everything goes out to syslog
+
+    also, args.debug switch to DEBUG and args.verbose switch to INFO
+    for stderr.
+    """
+    slfmt = logging.Formatter('%(filename)s[%(process)d]: %(message)s')
     sl = logging.handlers.SysLogHandler(address='/dev/log')
     sl.setFormatter(slfmt)
     logging.getLogger('').addHandler(sl)
@@ -223,6 +231,6 @@ def logging_setup(args):
     logging.getLogger('').addHandler(sh)
 
 if __name__ == '__main__':
-    logging_setup(parse_args())
+    daemon_logging(parse_args())
 
     AvahiAliases().run()
