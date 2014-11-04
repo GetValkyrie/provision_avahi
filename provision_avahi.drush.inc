@@ -7,7 +7,7 @@
  * Implements drush_hook_post_COMMAND().
  */
 function drush_provision_avahi_post_provision_verify() {
-  if (d()->type == 'site') {
+  if (d()->type == 'site' && d()->profile != 'hostmaster') {
     $alias_path = drush_get_option('avahi_alias_path', '/var/aegir/config/avahi-aliases');
     $site_name = d()->uri;
     if ( substr($site_name, -6) != '.local') {
