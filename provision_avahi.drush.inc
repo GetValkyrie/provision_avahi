@@ -11,7 +11,7 @@ function drush_provision_avahi_post_provision_verify() {
     $alias_path = drush_get_option('avahi_alias_path', '/var/aegir/config/avahi-aliases');
     $site_name = d()->uri;
     if ( substr($site_name, -6) != '.local') {
-      drush_log(dt("Only domains ending in '.local' are supported. Could not create Avahi alias for !uri", array('!uri' => $site_name)), 'warning');
+      drush_log(dt("Only domains ending in '.local' are supported. Could not create Avahi alias for !uri", array('!uri' => $site_name)));
       return;
     }
     if (!is_dir($alias_path)) {
