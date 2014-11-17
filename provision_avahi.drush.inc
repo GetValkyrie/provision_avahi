@@ -21,11 +21,16 @@ function drush_provision_avahi_post_provision_verify() {
     drush_log(dt("Creating Avahi CNAME alias for site."));
     file_put_contents($alias_path . '/' . $site_name, $site_name);
     if (drush_shell_exec('sudo /usr/bin/supervisorctl restart avahi-aliases')) {
-      drush_log(dt("Created Avahi alias for !uri", array('!uri' => $site_name)), 'success');
+      #drush_log(dt("Created Avahi alias for !uri", array('!uri' => $site_name)), 'success');
+      drush_log(dt("Created Avahi alias for !uri", array('!uri' => $site_name)), 'warning');
     }
     else {
       drush_log(dt("Failed to restart Avahi alias service."), 'warning');
     }
+  }
+  // Make sure we don't have a site alias matching the server's FQDN.
+  if (d()->type == 'site' && d()->uri == provision_fqdn()) {
+    _drush_provision_avahi_remove_alias(d()->uri);
   }
 }
 
@@ -41,12 +46,18 @@ function drush_provision_avahi_post_provision_install() {
  */
 function drush_provision_avahi_post_provision_delete() {
   if (d()->type == 'site') {
-    $alias_path = drush_get_option('avahi_alias_path', '/var/aegir/config/avahi-aliases');
-    $site_name = d()->uri;
+    _drush_provision_avahi_remove_alias(d()->uri);
+  }
+}
+
+function _drush_provision_avahi_remove_alias($uri) {
+  $aliases_dir = drush_get_option('avahi_alias_path', '/var/aegir/config/avahi-aliases');
+  $alias_path = $aliases_dir . '/' . $uri;
+  if (file_exists($alias_path)) {
     drush_log(dt("Removing Avahi CNAME alias for site."));
-    unlink($alias_path . '/' . $site_name);
+    unlink($alias_path);
     if (drush_shell_exec('sudo /usr/bin/supervisorctl restart avahi-aliases')) {
-      drush_log(dt("Removed Avahi alias for !uri", array('!uri' => $site_name)), 'success');
+      drush_log(dt("Removed Avahi alias for !uri", array('!uri' => $uri)), 'success');
     }
     else {
       drush_log(dt("Failed to restart Avahi alias service."), 'warning');
