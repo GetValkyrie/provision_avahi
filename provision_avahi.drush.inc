@@ -7,14 +7,9 @@
  * Implements drush_hook_post_COMMAND().
  */
 function drush_provision_avahi_post_provision_verify() {
-  if (d()->type == 'site' && d()->profile != 'hostmaster') {
+  if (d()->type == 'site' && d()->profile != 'hostmaster' && d()->uri != provision_fqdn()) {
     $alias_path = drush_get_option('avahi_alias_path', '/var/aegir/config/avahi-aliases');
     $site_name = d()->uri;
-    if ($site_name == provision_fqdn()) {
-      // Avoid Avahi segfaults.
-      drush_log(dt("Site name matches FQDN (!uri). Skippig Avahi alias generation.", array('!uri' => $site_name)));
-      return;
-    }
     if ( substr($site_name, -6) != '.local') {
       drush_log(dt("Only domains ending in '.local' are supported. Could not create Avahi alias for !uri", array('!uri' => $site_name)));
       return;
