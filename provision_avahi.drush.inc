@@ -21,8 +21,7 @@ function drush_provision_avahi_post_provision_verify() {
     drush_log(dt("Creating Avahi CNAME alias for site."));
     file_put_contents($alias_path . '/' . $site_name, $site_name);
     if (drush_shell_exec('sudo /usr/bin/supervisorctl restart avahi-aliases')) {
-      #drush_log(dt("Created Avahi alias for !uri", array('!uri' => $site_name)), 'success');
-      drush_log(dt("Created Avahi alias for !uri", array('!uri' => $site_name)), 'warning');
+      drush_log(dt("Created Avahi alias for !uri", array('!uri' => $site_name)), 'success');
     }
     else {
       drush_log(dt("Failed to restart Avahi alias service."), 'warning');
