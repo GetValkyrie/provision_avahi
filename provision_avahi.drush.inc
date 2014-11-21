@@ -9,7 +9,16 @@
 function drush_provision_avahi_post_provision_verify() {
   if (d()->type == 'site' && d()->profile != 'hostmaster' && d()->uri != provision_fqdn()) {
     $alias_path = drush_get_option('avahi_alias_path', '/var/aegir/config/avahi-aliases');
-    $site_name = d()->uri;
+
+    // Use an automatically generated URL alias, if available
+    $aliases = d()->aliases;
+    if (count($aliases)) {
+      $site_name = $aliases[0];
+    }
+    else {
+      $site_name = d()->uri;
+    }
+
     if ( substr($site_name, -6) != '.local') {
       drush_log(dt("Only domains ending in '.local' are supported. Could not create Avahi alias for !uri", array('!uri' => $site_name)));
       return;
